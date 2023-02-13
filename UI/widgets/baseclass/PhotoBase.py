@@ -8,7 +8,6 @@ class PhotoBase(QVBoxLayout):
 
     def __init__(self, face, *args):
         QVBoxLayout.__init__(self, *args)
-        # mouse events
         self.click = None
         self.doubleClick = None
 
@@ -42,8 +41,7 @@ class PhotoBase(QVBoxLayout):
         self.label.setText(tag)
 
     def setPixmap(self, pixmap):
-        self.face.pixmap = pixmap
-        self.frame.setPixmap(self.face.pixmap)
+        self.frame.setPixmap(pixmap)
 
     def getPixmap(self):
         return self.face.pixmap

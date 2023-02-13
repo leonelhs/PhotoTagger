@@ -1,47 +1,38 @@
-from PySide6.QtWidgets import QScrollArea, QWidget, QGridLayout
+from PySide6.QtWidgets import QGridLayout
 
-from UI.widgets.Photo import Photo
-
-
-def grid_positions(length, max_columns):
-    return [(row, column) for row in range(length) for column in range(max_columns)]
+from UI.widgets import grid_positions
+from UI.widgets.baseclass.PhotoContainerBase import PhotoContainerBase
 
 
-class PhotoGrid(QScrollArea):
-    def __init__(self, face, *args):
-        QScrollArea.__init__(self, *args)
-        self.click = None
-        self.doubleClick = None
+class PhotoGrid(PhotoContainerBase):
+
+    def __init__(self, *args):
+        PhotoContainerBase.__init__(self, *args)
         self.contextTagEvent = None
         self.contextLandmarksEvent = None
         self.contextNewGalleryEvent = None
-        self.setWidgetResizable(True)
-        self.scroll_contents = QWidget()
+
+    def initLayout(self, layout):
         self.layout = QGridLayout(self.scroll_contents)
         self.layout.setContentsMargins(0, 0, 0, 0)
-        self.setWidget(self.scroll_contents)
+        pass
 
-    def setStyle(self, style=""):
-        self.setStyleSheet(u"background-color: rgb(255, 255, 255)")
-
-    def appendThumbnail(self, face, position=(0, 0)):
+    def appendPhoto(self, face, position=(0, 0)):
         photo = self.newPhoto(face)
         self.layout.addLayout(photo, position[0], position[1])
 
     def populate_grid(self, thumbnails, max_columns=5):
-        self.clearPhotos()
+        self.clearLayout()
         positions = grid_positions(len(thumbnails), max_columns)
         for position, thumbnail in zip(positions, thumbnails):
-            self.appendThumbnail(thumbnail, position)
+            self.appendPhoto(thumbnail, position)
 
-    def photoAtPosition(self, row=0, column=0):
-        return self.layout.itemAtPosition(row, column)
-
-    def setClickEvent(self, callback):
-        self.click = callback
-
-    def setDoubleClickEvent(self, callback):
-        self.doubleClick = callback
+    def newPhoto(self, face):
+        photo = super().newPhoto(face)
+        photo.setContextTagEvent(self.contextTagEvent)
+        photo.setContextLandmarksEvent(self.contextLandmarksEvent)
+        photo.setContextNewGalleryEvent(self.contextNewGalleryEvent)
+        return photo
 
     def setContextTagEvent(self, callback):
         self.contextTagEvent = callback
@@ -52,19 +43,7 @@ class PhotoGrid(QScrollArea):
     def setContextNewGalleryEvent(self, callback):
         self.contextNewGalleryEvent = callback
 
-    def getWidth(self):
-        return self.size().width()
-
-    def newPhoto(self, face):
-        photo = Photo(face)
-        photo.setClickEvent(self.click)
-        photo.setDoubleClickEvent(self.doubleClick)
-        photo.setContextTagEvent(self.contextTagEvent)
-        photo.setContextLandmarksEvent(self.contextLandmarksEvent)
-        photo.setContextNewGalleryEvent(self.contextNewGalleryEvent)
-        return photo
-
-    def clearPhotos(self):
+    def clearLayout(self):
         while self.layout.count():
             child = self.layout.takeAt(0)
             if child.layout():

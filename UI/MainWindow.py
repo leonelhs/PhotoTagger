@@ -12,6 +12,7 @@ from Storage import Storage
 from PhotoScanner import PhotoScanner
 from UI.Tagging import Tagging
 from UI.widgets.PhotoGrid import PhotoGrid
+from UI.widgets.PhotoGrid import PhotoGrid
 
 
 def get_line(array):

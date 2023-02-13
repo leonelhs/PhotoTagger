@@ -5,14 +5,11 @@ from PySide6.QtWidgets import QScrollArea, QWidget
 from UI.widgets.Photo import Photo
 
 
-class PhotoScrollBase(QScrollArea):
-    def __init__(self, face, *args):
+class PhotoContainerBase(QScrollArea):
+    def __init__(self, *args):
         QScrollArea.__init__(self, *args)
         self.click = None
         self.doubleClick = None
-        self.contextTagEvent = None
-        self.contextLandmarksEvent = None
-        self.contextNewGalleryEvent = None
         self.setWidgetResizable(True)
         self.scroll_contents = QWidget()
         self.layout = None
@@ -37,15 +34,6 @@ class PhotoScrollBase(QScrollArea):
     def setDoubleClickEvent(self, callback):
         self.doubleClick = callback
 
-    def setContextTagEvent(self, callback):
-        self.contextTagEvent = callback
-
-    def setContextLandmarksEvent(self, callback):
-        self.contextLandmarksEvent = callback
-
-    def setContextNewGalleryEvent(self, callback):
-        self.contextNewGalleryEvent = callback
-
     def getWidth(self):
         return self.size().width()
 
@@ -54,4 +42,5 @@ class PhotoScrollBase(QScrollArea):
         photo.setClickEvent(self.click)
         photo.setDoubleClickEvent(self.doubleClick)
         return photo
+
 
