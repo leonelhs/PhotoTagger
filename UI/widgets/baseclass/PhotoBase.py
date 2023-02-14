@@ -1,32 +1,35 @@
 from abc import abstractmethod
 
 from PySide6.QtGui import Qt
-from PySide6.QtWidgets import QVBoxLayout, QLabel, QMenu
+from PySide6.QtWidgets import QVBoxLayout, QLabel
 
 
 class PhotoBase(QVBoxLayout):
 
     def __init__(self, face, *args):
         QVBoxLayout.__init__(self, *args)
+        self.face = face
+        self.label = None
+        self.frame = None
+        self.initPhotoView()
+        self.initPhotoTag()
         self.click = None
         self.doubleClick = None
-
-        self.face = face
-        self.tags = "Unknown"
-        if face.tags:
-            self.tags = face.tags
-
-        self.frame = QLabel()
-        self.frame.setAlignment(Qt.AlignCenter)
-        self.frame.setPixmap(face.pixmap)
-        self.addWidget(self.frame)
-        self.label = QLabel()
-        self.label.setText(self.tags)
-        self.label.setAlignment(Qt.AlignCenter)
-        self.addWidget(self.label)
         self.frame.mousePressEvent = self.clickEvent
         self.frame.mouseDoubleClickEvent = self.doubleClickEvent
         self.frame.contextMenuEvent = self.contextMenuEvent
+
+    def initPhotoView(self):
+        self.frame = QLabel()
+        self.frame.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.frame.setPixmap(self.face.pixmap)
+        self.addWidget(self.frame)
+
+    def initPhotoTag(self):
+        self.label = QLabel()
+        self.setTag(self.face.tags)
+        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.addWidget(self.label)
 
     def getFrame(self):
         return self.frame
@@ -38,7 +41,11 @@ class PhotoBase(QVBoxLayout):
         return self.label
 
     def setTag(self, tag):
-        self.label.setText(tag)
+        if not tag:
+            self.face.tags = "Unknown"
+        else:
+            self.face.tags = tag
+        self.label.setText(self.face.tags)
 
     def setPixmap(self, pixmap):
         self.frame.setPixmap(pixmap)
