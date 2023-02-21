@@ -79,5 +79,5 @@ class Tagging(QWidget):
 
     def onGalleryHandlerMessage(self, face):
         self.face = face
-        self.photoLabel.setPixmap(self.face.pixmap)
-        self.tagEdit.setText(self.face.match)
+        self.photoLabel.setPixmap(self.face.thumbnail)
+        self.tagEdit.setText(self.face.tags)

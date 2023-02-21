@@ -22,7 +22,7 @@ class PhotoBase(QVBoxLayout):
     def initPhotoView(self):
         self.frame = QLabel()
         self.frame.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.frame.setPixmap(self.face.pixmap)
+        self.frame.setPixmap(self.face.thumbnail)
         self.addWidget(self.frame)
 
     def initPhotoTag(self):
@@ -51,19 +51,19 @@ class PhotoBase(QVBoxLayout):
         self.frame.setPixmap(pixmap)
 
     def getPixmap(self):
-        return self.face.pixmap
+        return self.face.__thumbnail
 
     def getFilePath(self):
-        return self.face.image_path
+        return self.face.__file
 
     def getFileName(self):
         return self.face.face_id
 
     def getEncodings(self):
-        return self.face.encodings
+        return self.face.__encodings
 
     def getLandmarks(self):
-        return self.face.landmarks
+        return self.face.__landmarks
 
     def clickEvent(self, event):
         self.click(event, self.face)

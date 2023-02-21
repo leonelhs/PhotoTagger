@@ -76,5 +76,5 @@ class Landmarks(QWidget):
         self.close()
 
     def onGalleryHandlerMessage(self, face):
-        self.photoLabel.setPixmap(face.pixmap)
+        self.photoLabel.setPixmap(face.__thumbnail)
         self.tagEdit.setText(face.match)

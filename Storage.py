@@ -6,90 +6,73 @@ from Face import Face
 
 
 class DbConnection(contextlib.closing):
-    def __init__(self, db_name):
-        self.thing = connect(db_name)
-        super().__init__(self.thing)
+    def __init__(self, database):
+        self.database = connect(database)
+        super().__init__(self.database)
 
 
 class Storage:
-    def __init__(self, db_name=".gallery.db"):
-        self._gallery_id = None
-        self._gallery_path = None
-        self._db_name = db_name
+    def __init__(self):
+        self.database = "gallery.db"
         self._create_schema()
 
-    def path(self):
-        return self._gallery_path
+    def exists(self, folder):
+        with DbConnection(self.database) as con:
+            try:
+                query = "SELECT folder FROM gallery WHERE folder = ?"
+                if folder in con.execute(query, (folder,)).fetchone():
+                    return True
+            except:
+                pass
+                return False
 
-    def open(self, gallery_path):
-        self._gallery_path = gallery_path
-        with DbConnection(self._db_name) as con:
-            with con as cur:
-                try:
-                    query = "SELECT gallery_id FROM galleries WHERE path = ?"
-                    self._gallery_id = cur.execute(query, (self._gallery_path,)).fetchone()[0]
-                    if self._gallery_path:
-                        return True
-                except:
-                    pass
-                    return False
-
-    def insertFaces(self, values):
-        with DbConnection(self._db_name) as con:
+    def saveGallery(self, folder, values):
+        with DbConnection(self.database) as con:
             with con as ins:
-                data = (hash(self._gallery_path), self._gallery_path, datetime.now())
-                ins.execute("INSERT INTO galleries(gallery_id, path, opened) VALUES(?, ?, ?)", data)
+                gallery = (folder, datetime.now())
+                ins.execute("INSERT INTO gallery(folder, opened) VALUES(?, ?)", gallery)
             with con as cur:
-                query = "INSERT INTO faces(gallery_id, face_id, thumbnail, encodings, landmarks) VALUES(?, ?, ?, ?, ?)"
+                query = "INSERT INTO faces(folder, file, encodings, landmarks, thumbnail) VALUES(?, ?, ?, ?, ?)"
                 cur.executemany(query, values)
                 con.commit()
 
     def fetchGalleries(self):
-        with DbConnection(self._db_name) as con:
-            with con as cur:
-                query = "SELECT path FROM galleries ORDER BY opened DESC LIMIT 10"
-                return cur.execute(query).fetchall()
+        with DbConnection(self.database) as con:
+            query = "SELECT folder FROM gallery ORDER BY opened DESC LIMIT 10"
+            return con.execute(query).fetchall()
 
-    def fetchAllFaces(self):
-        with DbConnection(self._db_name) as con:
-            with con as cur:
-                query = "SELECT path||'/'||face_id, " \
-                        "faces.gallery_id, face_id, match, tags, thumbnail, encodings, landmarks " \
-                        "FROM faces INNER JOIN galleries ON galleries.gallery_id = faces.gallery_id " \
-                        "AND faces.gallery_id = ?"
-                result = cur.execute(query, (self._gallery_id,)).fetchall()
-                return [Face(*row) for row in result]
+    def fetchAllFaces(self, folder):
+        with DbConnection(self.database) as con:
+            query = "SELECT * FROM faces WHERE folder = ?"
+            result = con.execute(query, (folder,)).fetchall()
+            return [Face(*row) for row in result]
 
-    def fetchFaceBy(self, face_id):
-        with DbConnection(self._db_name) as con:
-            with con as cur:
-                query = "SELECT * FROM faces WHERE gallery_id = ? AND face_id = ?"
-                return cur.execute(query, (self._gallery_id, face_id)).fetchone()
+    def fetchFaceBy(self, folder, file):
+        with DbConnection(self.database) as con:
+            query = "SELECT * FROM faces WHERE folder = ? AND file = ?"
+            return con.execute(query, (folder, file)).fetchone()
 
     def updateAll(self, values):
-        with DbConnection(self._db_name) as con:
-            with con as cur:
-                query = "UPDATE faces SET tags = ? WHERE gallery_id = ? AND face_id = ?"
-                cur.executemany(query, values)
-                con.commit()
+        with DbConnection(self.database) as con:
+            query = "UPDATE faces SET tags = ? WHERE folder = ? AND file = ?"
+            con.executemany(query, values)
+            con.commit()
 
     def _create_schema(self):
-        with DbConnection(self._db_name) as con:
-            with con as cur:
-                cur.executescript("""
-                CREATE TABLE IF NOT EXISTS galleries(
-                    gallery_id TEXT NOT NULL UNIQUE,
-                    path TEXT NOT NULL UNIQUE , 
+        with DbConnection(self.database) as con:
+            con.executescript("""
+                CREATE TABLE IF NOT EXISTS gallery(
+                    folder TEXT NOT NULL UNIQUE , 
                     opened DATETIME, 
-                    PRIMARY KEY (gallery_id));
-                    
+                    PRIMARY KEY (folder));
+    
                 CREATE TABLE IF NOT EXISTS faces(
-                    gallery_id TEXT NOT NULL,
-                    face_id TEXT NOT NULL,
-                    match INTEGER, 
+                    folder TEXT NOT NULL,
+                    file TEXT NOT NULL,
                     tags TEXT, 
-                    thumbnail BLOB, 
                     encodings BLOB, 
-                    landmarks BLOB, 
-                    PRIMARY KEY (gallery_id, face_id));
+                    landmarks BLOB,
+                    thumbnail BLOB,
+                    PRIMARY KEY (folder, file));
                 """)
+
