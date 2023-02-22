@@ -1,6 +1,9 @@
 import os
-from filetype import is_image
 from os.path import join, isfile
+
+from filetype import is_image
+
+from MetaData import MetaData
 
 
 class FileFilter:
@@ -21,7 +24,8 @@ class FileFilter:
     def append(self, slim_data, fat_data):
         slim_data["encodings"] = fat_data[0]
         slim_data["landmarks"] = fat_data[1]
-        slim_data["thumbnail"] = fat_data[2]
+        slim_data["pixmap"] = fat_data[2]
+        slim_data["tags"] = fat_data[3]
         self.__fat_metadata_list.append(slim_data)
 
     def __filter(self, folder):
@@ -29,8 +33,8 @@ class FileFilter:
             path = join(folder, file)
             if isfile(path):
                 if is_image(path):
-                    file_data = {"path": path, "folder": folder, "file": file}
+                    file_data = {"path": path, "folder": folder, "file": file, "tags": ""}
                     self.__slim_metadata_list.append(file_data)
 
-    def values(self):
-        return [list(metadata.values()) for metadata in self.__fat_metadata_list]
+    def metadataList(self):
+        return [MetaData(metadata) for metadata in self.__fat_metadata_list]

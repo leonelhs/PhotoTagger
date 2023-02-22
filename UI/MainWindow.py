@@ -1,37 +1,19 @@
-import shutil
-
 from PySide6.QtCore import (QCoreApplication, QMetaObject, Signal, QThreadPool)
-from PySide6.QtGui import QPainter, QColor
 from PySide6.QtWidgets import (QHBoxLayout, QMenuBar,
                                QProgressBar, QStatusBar,
                                QVBoxLayout, QWidget, QMainWindow, QMenu, QFileDialog)
 
-from tagger import compareFaces, processMetadata
-from FileFilter import FileFilter
 from Actions import ActionRecents, Action
+from FaceTagger import compareFaces, getMetadata
+from FileFilter import FileFilter
 from PhotoScanner import PhotoScanner
-from Storage import Storage
-from UI.Tagging import Tagging
+from Reopen import Reopen
+from UI.TagWidget import TagWidget
 from UI.widgets.PhotoGrid import PhotoGrid
-
-
-def get_line(array):
-    for i in range(0, len(array), 2):
-        yield array[i:i + 2]
 
 
 def tr(label):
     return QCoreApplication.translate("MainWindow", label, None)
-
-
-def drawFaceLandmarks(face):
-    painter = QPainter(face.__thumbnail)
-    painter.setPen(QColor(255, 255, 0))
-    for marks in face.__landmarks:
-        for positions in marks:
-            for position in get_line(marks[positions]):
-                if len(position) > 1:
-                    painter.drawLine(*position[0], *position[1])
 
 
 class MainWindow(QMainWindow, PhotoScanner):
@@ -39,11 +21,11 @@ class MainWindow(QMainWindow, PhotoScanner):
 
     def __init__(self):
         super().__init__()
-        self.storage = None
+        self.reopen = None
         self.menuRecents = None
         self.menuGallery = None
         self.menuFile = None
-        self.thumbnailGrid = None
+        self.viewer = None
         self.statusbar = None
         self.menubar = None
         self.progressBar = None
@@ -52,12 +34,12 @@ class MainWindow(QMainWindow, PhotoScanner):
         self.central_widget = None
 
         self.actionGalleryOpen = Action(self, "Open Gallery", "fa.folder-open")
-        self.actionGalleryOpen.setOnClickEvent(self.openGalleryFolder)
+        self.actionGalleryOpen.setOnClickEvent(self.openPhotoGalleryFolder)
 
         self.threadpool = QThreadPool()
 
-        self.tagFaceForm = Tagging()
-        self.storage = Storage()
+        self.tagFaceForm = TagWidget()
+        self.reopen = Reopen()
 
         self.setupUi(self)
 
@@ -67,13 +49,14 @@ class MainWindow(QMainWindow, PhotoScanner):
         self.central_layout = QHBoxLayout(self.central_widget)
         self.widgets_layout = QVBoxLayout()
 
-        self.thumbnailGrid = PhotoGrid(self.central_widget)
-        self.thumbnailGrid.setClickEvent(self.onActivePhotoClicked)
-        self.thumbnailGrid.setDoubleClickEvent(self.onActivePhotoDoubleClicked)
-        self.thumbnailGrid.setContextTagEvent(self.onContextMenuTagClicked)
-        self.thumbnailGrid.setContextLandmarksEvent(self.onContextMenuLandmarksClicked)
-        self.thumbnailGrid.setContextNewGalleryEvent(self.onContextMenuNewGalleryClicked)
-        self.widgets_layout.addWidget(self.thumbnailGrid)
+        self.viewer = PhotoGrid(self.central_widget)
+        self.viewer.setClickEvent(self.onActivePhotoClicked)
+        self.viewer.setDoubleClickEvent(self.onActivePhotoDoubleClicked)
+        self.viewer.setContextTagEvent(self.onContextMenuTagClicked)
+        self.viewer.setContextLandmarksEvent(self.onContextMenuLandmarksClicked)
+        self.viewer.setContexMovePhotosEvent(self.onContextMenuMovePhotosClicked)
+        self.viewer.setContexCopyPhotosEvent(self.onContextMenuCopyPhotosClicked)
+        self.widgets_layout.addWidget(self.viewer)
 
         self.progressBar = QProgressBar(self.central_widget)
         self.progressBar.setValue(0)
@@ -93,8 +76,8 @@ class MainWindow(QMainWindow, PhotoScanner):
         main_window.setStatusBar(self.statusbar)
 
         QMetaObject.connectSlotsByName(main_window)
-        self.galleryHandler.connect(self.tagFaceForm.onGalleryHandlerMessage)
-        self.tagFaceForm.taggerHandler.connect(self.onTaggerHandlerMessage)
+        self.galleryHandler.connect(self.tagFaceForm.onFaceTaggerRequest)
+        self.tagFaceForm.taggerHandler.connect(self.onCompareFaceMessage)
 
     def createMenus(self, main_window):
         self.menubar = QMenuBar(main_window)
@@ -111,83 +94,75 @@ class MainWindow(QMainWindow, PhotoScanner):
         self.menuFile.addMenu(self.menuRecents)
         main_window.setMenuBar(self.menubar)
 
-    def populateThumbnails(self, folder):
-        if self.storage.exists(folder):
-            face_list = self.storage.fetchAllFaces(folder)
-            self.thumbnailGrid.populate_grid(face_list)
-            return True
-        return False
-
     def appendFileRecents(self):
-        recents = self.storage.fetchGalleries()
+        recents = self.reopen.fetchRecents()
         for recent in recents:
             action = ActionRecents(self, recent[0])
-            action.setCallback(self.populateThumbnails)
+            action.setCallback(self.startScanningThread)
             self.menuRecents.addAction(action)
 
     def logger(self, tag, message):
         self.statusbar.showMessage("{0} {1}".format(tag, message))
 
-    def onActivePhotoClicked(self, event, face):
-        self.logger("Working image at: ", face.tags)
+    def onActivePhotoClicked(self, event, photo):
+        self.logger("Working image at: ", photo.tags())
 
-    def onActivePhotoDoubleClicked(self, event, face):
+    def onActivePhotoDoubleClicked(self, event, photo):
         pass
 
-    def onContextMenuTagClicked(self, event, face):
-        self.galleryHandler.emit(face)
+    def onContextMenuTagClicked(self, event, photo):
+        self.galleryHandler.emit(photo)
         self.tagFaceForm.show()
 
-    def onContextMenuLandmarksClicked(self, event, face):
-        image = tagger.imageOpen(face.path)
-        face.__thumbnail = image.toqpixmap()
-        drawFaceLandmarks(face)
-        self.galleryHandler.emit(face)
+    def onContextMenuLandmarksClicked(self, event, photo):
+        big_photo = photo.getOriginalPhoto()
+        big_photo.drawFaceLandmarks()
+        self.galleryHandler.emit(big_photo)
         self.tagFaceForm.show()
 
-    def onContextMenuNewGalleryClicked(self, event, face):
-        tagged_list = []
-        new_gallery_path = QFileDialog.getExistingDirectory(self, 'Open gallery')
-        if new_gallery_path:
-            for tagged_face in self.storage.fetchAllFaces():
-                if tagged_face.tags == face.tags:
-                    tagged_list.append(tagged_face)
-            for tagged_face in tagged_list:
-                shutil.move(tagged_face.__file, new_gallery_path)
+    def onContextMenuMovePhotosClicked(self, event, known_photo):
+        new_path = QFileDialog.getExistingDirectory(self, 'Choose new destination')
+        if new_path:
+            for photo in self.viewer.photos():
+                if photo == known_photo:
+                    photo.moveFile(new_path)
 
-    def openGalleryFolder(self):
+    def onContextMenuCopyPhotosClicked(self, event, known_photo):
+        new_path = QFileDialog.getExistingDirectory(self, 'Choose new destination')
+        if new_path:
+            for photo in self.viewer.photos():
+                if photo == known_photo:
+                    photo.copyFile(new_path)
+
+    def openPhotoGalleryFolder(self):
         folder = QFileDialog.getExistingDirectory(self, 'Open gallery')
         if folder:
-            if not self.populateThumbnails(folder):
-                self.startScanningThread(folder)
+            self.reopen.appendRecents(folder)
+            self.startScanningThread(folder)
             self.logger("Working gallery at: ", folder)
 
-    def onTaggerHandlerMessage(self, known_face):
-        tagged = []
-        for unknown_face in self.storage.fetchAllFaces(known_face.folder):
-            if compareFaces(known_face.__encodings, unknown_face.__encodings):
-                unknown_face.tags = known_face.tags
-                tagged.append(unknown_face)
-        self.thumbnailGrid.populate_grid(tagged)
-        to_tag = [(face.tags, face.folder, face.file) for face in tagged]
-        self.storage.updateAll(to_tag)
+    def onCompareFaceMessage(self, known_photo):
+        for photo in self.viewer.photos():
+            if compareFaces(known_photo.encodings(), photo.encodings()):
+                photo.setTags(known_photo.tags())
+                photo.saveTags(known_photo.tags())
 
     def executeScanningWork(self, folder, progress_callback):
         imageList = FileFilter(folder)
         for image in imageList():
-            metadata = processMetadata(image.pop("path"))
-            imageList.append(image, metadata)
-            progress_callback.emit(imageList.progress())
-        self.storage.saveGallery(folder, imageList.values())
-        return folder
+            metadata = getMetadata(image["path"])
+            if metadata:
+                imageList.append(image, metadata)
+                progress_callback.emit(imageList.progress())
+        return imageList.metadataList()
 
     def trackScanningProgress(self, progress):
         self.progressBar.setValue(progress)
         self.logger("Scanning gallery completed: ", progress)
 
-    def scanningDone(self, folder):
+    def scanningDone(self, metadata):
         self.logger("encode ", " done")
-        self.populateThumbnails(folder)
+        self.viewer.drawPhotos(metadata)
 
     def scanningComplete(self):
         self.progressBar.hide()

@@ -6,78 +6,90 @@ from PySide6.QtWidgets import QVBoxLayout, QLabel
 
 class PhotoBase(QVBoxLayout):
 
-    def __init__(self, face, *args):
+    def __init__(self, metadata, *args):
         QVBoxLayout.__init__(self, *args)
-        self.face = face
-        self.label = None
-        self.frame = None
-        self.initPhotoView()
-        self.initPhotoTag()
-        self.click = None
-        self.doubleClick = None
-        self.frame.mousePressEvent = self.clickEvent
-        self.frame.mouseDoubleClickEvent = self.doubleClickEvent
-        self.frame.contextMenuEvent = self.contextMenuEvent
+        self.__metadata = metadata
+        self.__label = None
+        self.__frame = None
+        self.__initPhotoView()
+        self.__initPhotoTag()
+        self.__click = None
+        self.__doubleClick = None
+        self.__style()
 
-    def initPhotoView(self):
-        self.frame = QLabel()
-        self.frame.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.frame.setPixmap(self.face.thumbnail)
-        self.addWidget(self.frame)
+    def __eq__(self, other):
+        if self.tags() == other.tags():
+            return True
+        return False
 
-    def initPhotoTag(self):
-        self.label = QLabel()
-        self.setTag(self.face.tags)
-        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.addWidget(self.label)
+    def __initPhotoView(self):
+        self.__frame = QLabel()
+        self.__frame.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.__frame.mousePressEvent = self.clickEvent
+        self.__frame.mouseDoubleClickEvent = self.doubleClickEvent
+        self.__frame.contextMenuEvent = self.contextMenuEvent
+        self.addWidget(self.__frame)
 
-    def getFrame(self):
-        return self.frame
+    def __initPhotoTag(self):
+        self.__label = QLabel()
+        self.__label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.setTags(self.__metadata.tags)
+        self.addWidget(self.__label)
 
-    def getFace(self):
-        return self.face
+    def frame(self):
+        return self.__frame
 
-    def getLabel(self):
-        return self.label
+    def face(self):
+        return self.__metadata
 
-    def setTag(self, tag):
-        if not tag:
-            self.face.tags = "Unknown"
-        else:
-            self.face.tags = tag
-        self.label.setText(self.face.tags)
+    def label(self):
+        return self.__label
+
+    def tags(self):
+        return self.__metadata.tags
+
+    def setTags(self, tags):
+        self.__metadata.tags = tags
+        self.__label.setText(self.__metadata.tags)
 
     def setPixmap(self, pixmap):
-        self.frame.setPixmap(pixmap)
+        self.__metadata.pixmap = pixmap
+        self.__frame.setPixmap(pixmap)
 
-    def getPixmap(self):
-        return self.face.__thumbnail
+    def pixmap(self):
+        return self.__metadata.pixmap
 
-    def getFilePath(self):
-        return self.face.__file
+    def filePath(self):
+        return self.__metadata.path
 
-    def getFileName(self):
-        return self.face.face_id
+    def fileName(self):
+        return self.__metadata.file
 
-    def getEncodings(self):
-        return self.face.__encodings
+    def encodings(self):
+        return self.__metadata.encodings
 
-    def getLandmarks(self):
-        return self.face.__landmarks
+    def landmarks(self):
+        return self.__metadata.landmarks
 
     def clickEvent(self, event):
-        self.click(event, self.face)
+        self.__click(event, self)
 
     def doubleClickEvent(self, event):
-        self.doubleClick(event, self.face)
+        self.__doubleClick(event, self)
 
     def setClickEvent(self, callback):
-        self.click = callback
+        self.__click = callback
 
     def setDoubleClickEvent(self, callback):
-        self.doubleClick = callback
+        self.__doubleClick = callback
+
+    def drawPixmap(self):
+        self.__frame.setPixmap(self.__metadata.pixmap)
+
+    def __style(self):
+        self.__frame.setStyleSheet("QLabel::hover"
+                                   "{border: 1px solid black;}")
 
     @abstractmethod
     def contextMenuEvent(self, event):
         pass
-

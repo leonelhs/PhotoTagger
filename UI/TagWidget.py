@@ -4,12 +4,12 @@ from PySide6.QtWidgets import (QHBoxLayout, QLabel, QLineEdit,
                                QPushButton, QVBoxLayout, QWidget, QMessageBox)
 
 
-class Tagging(QWidget):
+class TagWidget(QWidget):
     taggerHandler = Signal(object)
 
     def __init__(self, parent=None):
-        super(Tagging, self).__init__(parent)
-        self.face = None
+        super(TagWidget, self).__init__(parent)
+        self.photo = None
         self.buttonCancel = None
         self.buttonOK = None
         self.buttonsLayout = None
@@ -68,8 +68,8 @@ class Tagging(QWidget):
     def onClickOK(self):
         tagName = self.tagEdit.text()
         if tagName:
-            self.face.tags = tagName
-            self.taggerHandler.emit(self.face)
+            self.photo.setTags(tagName)
+            self.taggerHandler.emit(self.photo)
             self.close()
         else:
             self.showDialog("Please enter a name for this person!")
@@ -77,7 +77,7 @@ class Tagging(QWidget):
     def onClickCancel(self):
         self.close()
 
-    def onGalleryHandlerMessage(self, face):
-        self.face = face
-        self.photoLabel.setPixmap(self.face.thumbnail)
-        self.tagEdit.setText(self.face.tags)
+    def onFaceTaggerRequest(self, photo):
+        self.photo = photo
+        self.photoLabel.setPixmap(self.photo.pixmap())
+        self.tagEdit.setText(self.photo.tags())

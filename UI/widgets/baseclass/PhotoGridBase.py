@@ -1,31 +1,21 @@
 from abc import abstractmethod
 
-from PySide6.QtWidgets import QScrollArea, QWidget
-
-from UI.widgets.Photo import Photo
+from PySide6.QtWidgets import QScrollArea, QWidget, QGridLayout
 
 
-class PhotoContainerBase(QScrollArea):
+class PhotoGridBase(QScrollArea):
     def __init__(self, *args):
         QScrollArea.__init__(self, *args)
         self.click = None
         self.doubleClick = None
         self.setWidgetResizable(True)
         self.scroll_contents = QWidget()
-        self.layout = None
-        self.initLayout(self.layout)
+        self.layout = QGridLayout(self.scroll_contents)
+        self.layout.setContentsMargins(0, 0, 0, 0)
         self.setWidget(self.scroll_contents)
 
     @abstractmethod
-    def initLayout(self, layout):
-        pass
-
-    @abstractmethod
-    def clearLayout(self):
-        pass
-
-    @abstractmethod
-    def appendPhoto(self, face):
+    def drawPhoto(self, face):
         pass
 
     def setClickEvent(self, callback):
@@ -36,11 +26,5 @@ class PhotoContainerBase(QScrollArea):
 
     def getWidth(self):
         return self.size().width()
-
-    def newPhoto(self, face):
-        photo = Photo(face)
-        photo.setClickEvent(self.click)
-        photo.setDoubleClickEvent(self.doubleClick)
-        return photo
 
 
