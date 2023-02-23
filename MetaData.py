@@ -7,3 +7,4 @@ class MetaData:
         self.encodings = data["encodings"]
         self.landmarks = data["landmarks"]
         self.pixmap = data["pixmap"].toqpixmap()
+

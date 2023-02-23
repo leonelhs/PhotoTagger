@@ -1,1 +1,0 @@
-CREATE TABLE gallery(folder TEXT NOT NULL UNIQUE , opened DATETIME, PRIMARY KEY (folder))

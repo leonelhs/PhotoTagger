@@ -8,8 +8,7 @@ import face_recognition
 # Exif new metadata tags
 ENCODINGS = 42020
 LANDMARKS = 42022
-THUMBNAIL = 42024
-FACE_TAGS = 42026
+FACE_TAGS = 42024
 
 
 def serialize(data):
@@ -52,40 +51,43 @@ def openImage(image_path):
 
 
 def openImageTuple(image_path):
-    original = PIL.Image.open(image_path)
+    original = openImage(image_path)
     clone = copy(original)
+    clone.convert('RGB')
     return original, clone
 
 
+def thumb(image):
+    image.thumbnail((128, 128), PIL.Image.LANCZOS)
+    return image
+
+
 def getMetadata(image_path):
+
     try:
         image_original, image_clone = openImageTuple(image_path)
     except OSError:
         print("Not able to open image %s" % (image_path,))
         return None
 
-    image_clone.convert('RGB')
     exif = image_original.getexif()
 
     try:
         return unserialize(exif[ENCODINGS]), \
             unserialize(exif[LANDMARKS]), \
-            unserialize(exif[THUMBNAIL]), \
+            thumb(image_clone), \
             exif[FACE_TAGS]
     except KeyError:
         try:
-            landmarks = face_landmarks(image_clone)
-            encodings = face_encodings(image_clone)
-            image_clone.thumbnail((128, 128), PIL.Image.LANCZOS)
+            landmarks = face_landmarks(image_original)
+            encodings = face_encodings(image_original)
             exif[ENCODINGS] = serialize(encodings)
             exif[LANDMARKS] = serialize(landmarks)
-            exif[THUMBNAIL] = serialize(image_clone)
             exif[FACE_TAGS] = ""
-            return encodings, landmarks, image_clone, ""
+            return encodings, landmarks, thumb(image_clone), ""
         finally:
             try:
                 image_original.save(image_path, exif=exif)
             except OSError:
                 print("Not able to save image %s" % (image_path,))
                 return None
-

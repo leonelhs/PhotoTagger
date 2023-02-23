@@ -8,13 +8,13 @@ class PhotoBase(QVBoxLayout):
 
     def __init__(self, metadata, *args):
         QVBoxLayout.__init__(self, *args)
-        self.__metadata = metadata
         self.__label = None
         self.__frame = None
-        self.__initPhotoView()
-        self.__initPhotoTag()
         self.__click = None
         self.__doubleClick = None
+        self.__metadata = metadata
+        self.__initPhotoView()
+        self.__initPhotoTag()
         self.__style()
 
     def __eq__(self, other):
@@ -39,7 +39,7 @@ class PhotoBase(QVBoxLayout):
     def frame(self):
         return self.__frame
 
-    def face(self):
+    def metadata(self):
         return self.__metadata
 
     def label(self):
@@ -49,8 +49,11 @@ class PhotoBase(QVBoxLayout):
         return self.__metadata.tags
 
     def setTags(self, tags):
-        self.__metadata.tags = tags
-        self.__label.setText(self.__metadata.tags)
+        try:
+            self.__metadata.tags = tags
+            self.__label.setText(self.__metadata.tags)
+        except IndexError:
+            print("Not able to set tags %s" % self.metadata().path)
 
     def setPixmap(self, pixmap):
         self.__metadata.pixmap = pixmap

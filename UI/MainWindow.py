@@ -4,11 +4,10 @@ from PySide6.QtWidgets import (QHBoxLayout, QMenuBar,
                                QVBoxLayout, QWidget, QMainWindow, QMenu, QFileDialog)
 
 from Actions import ActionRecents, Action
-from FaceTagger import compareFaces, getMetadata
-from FileFilter import FileFilter
+from FaceTagger import compareFaces
 from PhotoScanner import PhotoScanner
 from Reopen import Reopen
-from UI.TagWidget import TagWidget
+from UI.TaggerWidget import TaggerWidget
 from UI.widgets.PhotoGrid import PhotoGrid
 
 
@@ -17,7 +16,7 @@ def tr(label):
 
 
 class MainWindow(QMainWindow, PhotoScanner):
-    galleryHandler = Signal(object)
+    taggerHandler = Signal(object)
 
     def __init__(self):
         super().__init__()
@@ -38,7 +37,7 @@ class MainWindow(QMainWindow, PhotoScanner):
 
         self.threadpool = QThreadPool()
 
-        self.tagFaceForm = TagWidget()
+        self.taggingFaceForm = TaggerWidget()
         self.reopen = Reopen()
 
         self.setupUi(self)
@@ -76,8 +75,8 @@ class MainWindow(QMainWindow, PhotoScanner):
         main_window.setStatusBar(self.statusbar)
 
         QMetaObject.connectSlotsByName(main_window)
-        self.galleryHandler.connect(self.tagFaceForm.onFaceTaggerRequest)
-        self.tagFaceForm.taggerHandler.connect(self.onCompareFaceMessage)
+        self.taggerHandler.connect(self.taggingFaceForm.onFaceTaggerRequest)
+        self.taggingFaceForm.taggerHandler.connect(self.onCompareFaceMessage)
 
     def createMenus(self, main_window):
         self.menubar = QMenuBar(main_window)
@@ -111,14 +110,14 @@ class MainWindow(QMainWindow, PhotoScanner):
         pass
 
     def onContextMenuTagClicked(self, event, photo):
-        self.galleryHandler.emit(photo)
-        self.tagFaceForm.show()
+        self.taggerHandler.emit(photo)
+        self.taggingFaceForm.show()
 
     def onContextMenuLandmarksClicked(self, event, photo):
         big_photo = photo.getOriginalPhoto()
         big_photo.drawFaceLandmarks()
-        self.galleryHandler.emit(big_photo)
-        self.tagFaceForm.show()
+        self.taggerHandler.emit(big_photo)
+        self.taggingFaceForm.show()
 
     def onContextMenuMovePhotosClicked(self, event, known_photo):
         new_path = QFileDialog.getExistingDirectory(self, 'Choose new destination')
@@ -146,24 +145,3 @@ class MainWindow(QMainWindow, PhotoScanner):
             if compareFaces(known_photo.encodings(), photo.encodings()):
                 photo.setTags(known_photo.tags())
                 photo.saveTags(known_photo.tags())
-
-    def executeScanningWork(self, folder, progress_callback):
-        imageList = FileFilter(folder)
-        for image in imageList():
-            metadata = getMetadata(image["path"])
-            if metadata:
-                imageList.append(image, metadata)
-                progress_callback.emit(imageList.progress())
-        return imageList.metadataList()
-
-    def trackScanningProgress(self, progress):
-        self.progressBar.setValue(progress)
-        self.logger("Scanning gallery completed: ", progress)
-
-    def scanningDone(self, metadata):
-        self.logger("encode ", " done")
-        self.viewer.drawPhotos(metadata)
-
-    def scanningComplete(self):
-        self.progressBar.hide()
-        self.logger("Scanning complete ", "Done")

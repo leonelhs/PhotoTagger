@@ -1,34 +1,35 @@
 import qtawesome as qta
 from PySide6.QtCore import (QCoreApplication, QMetaObject, Qt, Signal)
-from PySide6.QtWidgets import (QHBoxLayout, QLabel, QLineEdit,
-                               QPushButton, QVBoxLayout, QWidget, QMessageBox)
+from PySide6.QtWidgets import (QHBoxLayout, QLineEdit,
+                               QPushButton, QVBoxLayout, QWidget, QMessageBox, QGraphicsScene)
+
+from UI.widgets.ImageGraphicsView import ImageGraphicsView
 
 
-class TagWidget(QWidget):
+class TaggerWidget(QWidget):
     taggerHandler = Signal(object)
 
     def __init__(self, parent=None):
-        super(TagWidget, self).__init__(parent)
-        self.photo = None
+        super(TaggerWidget, self).__init__(parent)
+        self.__photo = None
+        self.__tagEdit = None
+        self.__photoViewer = None
+        self.__photoLayout = None
+        self.__layout = None
         self.buttonCancel = None
         self.buttonOK = None
         self.buttonsLayout = None
-        self.tagEdit = None
-        self.photoLabel = None
-        self.photoLayout = None
-        self.layout = None
-        self.setupUi()
+        self.__setupUi()
 
-    def setupUi(self):
-        self.layout = QVBoxLayout(self)
-        self.photoLayout = QVBoxLayout()
-        self.photoLabel = QLabel(self)
-        self.photoLabel.setAlignment(Qt.AlignCenter)
-        self.photoLabel.setMargin(10)
-        self.photoLayout.addWidget(self.photoLabel)
+    def __setupUi(self):
+        self.__layout = QVBoxLayout(self)
+        self.__photoLayout = QVBoxLayout()
+        self.__photoViewer = ImageGraphicsView(self)
+        self.__photoViewer.setAlignment(Qt.AlignCenter)
+        self.__photoLayout.addWidget(self.__photoViewer)
 
-        self.tagEdit = QLineEdit(self)
-        self.photoLayout.addWidget(self.tagEdit)
+        self.__tagEdit = QLineEdit(self)
+        self.__photoLayout.addWidget(self.__tagEdit)
 
         self.buttonsLayout = QHBoxLayout()
         self.buttonOK = QPushButton(self)
@@ -42,9 +43,9 @@ class TagWidget(QWidget):
         self.buttonCancel.setIcon(icon_close)
         self.buttonsLayout.addWidget(self.buttonCancel)
 
-        self.photoLayout.addLayout(self.buttonsLayout)
+        self.__photoLayout.addLayout(self.buttonsLayout)
 
-        self.layout.addLayout(self.photoLayout)
+        self.__layout.addLayout(self.__photoLayout)
 
         self.buttonOK.clicked.connect(self.onClickOK)
         self.buttonCancel.clicked.connect(self.onClickCancel)
@@ -55,7 +56,6 @@ class TagWidget(QWidget):
 
     def retranslateUi(self, Form):
         Form.setWindowTitle(QCoreApplication.translate("Form", u"Tagging Face ", None))
-        self.photoLabel.setText(QCoreApplication.translate("Form", u"Photo", None))
         self.buttonOK.setText(QCoreApplication.translate("Form", u"OK", None))
         self.buttonCancel.setText(QCoreApplication.translate("Form", u"Cancel", None))
 
@@ -66,10 +66,10 @@ class TagWidget(QWidget):
         dialog.exec()
 
     def onClickOK(self):
-        tagName = self.tagEdit.text()
+        tagName = self.__tagEdit.text()
         if tagName:
-            self.photo.setTags(tagName)
-            self.taggerHandler.emit(self.photo)
+            self.__photo.setTags(tagName)
+            self.taggerHandler.emit(self.__photo)
             self.close()
         else:
             self.showDialog("Please enter a name for this person!")
@@ -78,6 +78,10 @@ class TagWidget(QWidget):
         self.close()
 
     def onFaceTaggerRequest(self, photo):
-        self.photo = photo
-        self.photoLabel.setPixmap(self.photo.pixmap())
-        self.tagEdit.setText(self.photo.tags())
+        self.__photo = photo
+        self.__tagEdit.setText(photo.tags())
+        image = photo.pixmap()
+        scene = QGraphicsScene()
+        scene.addPixmap(image)
+        self.__photoViewer.setScene(scene)
+        self.resize(image.width(), image.height())

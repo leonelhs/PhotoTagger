@@ -1,10 +1,12 @@
 import shutil
+from copy import copy
 
 import PIL.Image
 from PySide6.QtGui import QPainter, QColor
 from PySide6.QtWidgets import QMenu
 
 from FaceTagger import FACE_TAGS
+from MetaData import MetaData
 
 from UI.widgets.baseclass.PhotoBase import PhotoBase
 
@@ -41,7 +43,8 @@ class Photo(PhotoBase):
         self.deleteWidget()
 
     def clone(self):
-        return Photo(self.face())
+        metadata = copy(self.metadata())
+        return Photo(metadata)
 
     def drawFaceLandmarks(self):
         painter = QPainter(self.pixmap())
