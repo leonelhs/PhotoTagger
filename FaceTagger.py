@@ -1,11 +1,14 @@
 import pickle
-from copy import copy
 
 import PIL.Image
-import numpy as np
 import face_recognition
+import numpy as np
 
-# Exif new metadata tags
+# Exif metadata tags
+# FACE_TAGS = 0x9286
+# ENCODINGS = 42020
+# LANDMARKS = 42022
+
 ENCODINGS = 42020
 LANDMARKS = 42022
 FACE_TAGS = 42024
@@ -19,22 +22,19 @@ def unserialize(raw):
     return pickle.loads(raw)
 
 
-def face_landmarks(image):
+def face_landmarks(np_array, face_locations=None):
     try:
-        np_array = np.array(image)
-        return face_recognition.face_landmarks(np_array)
+        return face_recognition.face_landmarks(np_array, face_locations)
     except IndexError:
         return False
 
 
-def face_encodings(image):
-    image = np.array(image)
-    if max(image.shape) > 1600:
-        shorten_image = PIL.Image.fromarray(image)
-        shorten_image.thumbnail((1600, 1600), PIL.Image.LANCZOS)
-        image = np.array(shorten_image)
+def face_encodings(image, np_array, face_locations=None):
+    if max(np_array.shape) > 1600:
+        image.thumbnail((1600, 1600), PIL.Image.LANCZOS)
+        np_array = np.array(image)
     try:
-        return face_recognition.face_encodings(image)
+        return face_recognition.face_encodings(np_array, face_locations)
     except IndexError:
         return False
 
@@ -47,47 +47,38 @@ def compareFaces(known_face, unknown_face):
 
 
 def openImage(image_path):
-    return PIL.Image.open(image_path)
+    return PIL.Image.open(image_path).convert('RGB')
 
 
-def openImageTuple(image_path):
-    original = openImage(image_path)
-    clone = copy(original)
-    clone.convert('RGB')
-    return original, clone
-
-
-def thumb(image):
-    image.thumbnail((128, 128), PIL.Image.LANCZOS)
-    return image
+def saveImageMetadata(image_path, exif):
+    image = openImage(image_path)
+    exif[LANDMARKS] = serialize(exif[LANDMARKS])
+    exif[ENCODINGS] = serialize(exif[ENCODINGS])
+    exif[FACE_TAGS] = serialize(exif[FACE_TAGS])
+    try:
+        image.save(image_path, exif=exif)
+    except OSError:
+        print("No able to save %s " % image_path)
+        return False
 
 
 def getMetadata(image_path):
+    image = openImage(image_path)
+    exif = image.getexif()
 
-    try:
-        image_original, image_clone = openImageTuple(image_path)
-    except OSError:
-        print("Not able to open image %s" % (image_path,))
-        return None
-
-    exif = image_original.getexif()
-
-    try:
-        return unserialize(exif[ENCODINGS]), \
-            unserialize(exif[LANDMARKS]), \
-            thumb(image_clone), \
-            exif[FACE_TAGS]
-    except KeyError:
+    if exif.get(FACE_TAGS):
+        image.thumbnail((128, 128), PIL.Image.LANCZOS)
         try:
-            landmarks = face_landmarks(image_original)
-            encodings = face_encodings(image_original)
-            exif[ENCODINGS] = serialize(encodings)
-            exif[LANDMARKS] = serialize(landmarks)
-            exif[FACE_TAGS] = ""
-            return encodings, landmarks, thumb(image_clone), ""
-        finally:
-            try:
-                image_original.save(image_path, exif=exif)
-            except OSError:
-                print("Not able to save image %s" % (image_path,))
-                return None
+            return unserialize(exif[ENCODINGS]), unserialize(exif[LANDMARKS]), image, unserialize(exif[FACE_TAGS])
+        except KeyError:
+            print("No able to open %s " % image_path)
+            return None
+    else:
+        np_array = np.array(image)
+        locations = face_recognition.face_locations(np_array)
+        exif[LANDMARKS] = face_landmarks(np_array, locations)
+        exif[ENCODINGS] = face_encodings(image, np_array, locations)
+        exif[FACE_TAGS] = ""
+        image.thumbnail((128, 128), PIL.Image.LANCZOS)
+        saveImageMetadata(image_path, exif)
+        return exif[LANDMARKS], exif[ENCODINGS], image, ""

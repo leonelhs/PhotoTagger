@@ -5,10 +5,9 @@ import PIL.Image
 from PySide6.QtGui import QPainter, QColor
 from PySide6.QtWidgets import QMenu
 
-from FaceTagger import FACE_TAGS
-from MetaData import MetaData
-
 from UI.widgets.baseclass.PhotoBase import PhotoBase
+
+from FaceTagger import FACE_TAGS
 
 
 def openImage(path):

@@ -51,7 +51,7 @@ class PhotoBase(QVBoxLayout):
     def setTags(self, tags):
         try:
             self.__metadata.tags = tags
-            self.__label.setText(self.__metadata.tags)
+            self.__label.setText(tags)
         except IndexError:
             print("Not able to set tags %s" % self.metadata().path)
 
