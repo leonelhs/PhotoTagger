@@ -1,13 +1,13 @@
 import qtawesome as qta
-from PySide6.QtCore import (QCoreApplication, QMetaObject, Qt, Signal)
+from PySide6.QtCore import (QMetaObject, Qt, Signal)
 from PySide6.QtWidgets import (QHBoxLayout, QLineEdit,
                                QPushButton, QVBoxLayout, QWidget, QMessageBox, QGraphicsScene)
 
-from UI.widgets.ImageGraphicsView import ImageGraphicsView
+from UI.widgets.image_graphics_wiew import ImageGraphicsView
 
 
 class TaggerWidget(QWidget):
-    taggerHandler = Signal(object)
+    taggerMessageHandler = Signal(object)
 
     def __init__(self, parent=None):
         super(TaggerWidget, self).__init__(parent)
@@ -16,12 +16,13 @@ class TaggerWidget(QWidget):
         self.__photoViewer = None
         self.__photoLayout = None
         self.__layout = None
-        self.buttonCancel = None
-        self.buttonOK = None
-        self.buttonsLayout = None
+        self.__buttonCancel = None
+        self.__buttonOK = None
+        self.__buttonsLayout = None
         self.__setupUi()
 
     def __setupUi(self):
+        self.setWindowTitle("Tagging Person")
         self.__layout = QVBoxLayout(self)
         self.__photoLayout = QVBoxLayout()
         self.__photoViewer = ImageGraphicsView(self)
@@ -31,33 +32,25 @@ class TaggerWidget(QWidget):
         self.__tagEdit = QLineEdit(self)
         self.__photoLayout.addWidget(self.__tagEdit)
 
-        self.buttonsLayout = QHBoxLayout()
-        self.buttonOK = QPushButton(self)
+        self.__buttonsLayout = QHBoxLayout()
+        self.__buttonOK = QPushButton(self)
 
         icon_ok = qta.icon('mdi.check')
-        self.buttonOK.setIcon(icon_ok)
-        self.buttonsLayout.addWidget(self.buttonOK)
+        self.__buttonOK.setIcon(icon_ok)
+        self.__buttonsLayout.addWidget(self.__buttonOK)
 
-        self.buttonCancel = QPushButton(self)
+        self.__buttonCancel = QPushButton(self)
         icon_close = qta.icon('mdi.close')
-        self.buttonCancel.setIcon(icon_close)
-        self.buttonsLayout.addWidget(self.buttonCancel)
-
-        self.__photoLayout.addLayout(self.buttonsLayout)
+        self.__buttonCancel.setIcon(icon_close)
+        self.__buttonsLayout.addWidget(self.__buttonCancel)
 
         self.__layout.addLayout(self.__photoLayout)
+        self.__layout.addLayout(self.__buttonsLayout)
 
-        self.buttonOK.clicked.connect(self.onClickOK)
-        self.buttonCancel.clicked.connect(self.onClickCancel)
-
-        self.retranslateUi(self)
+        self.__buttonOK.clicked.connect(self.onClickOK)
+        self.__buttonCancel.clicked.connect(self.onClickCancel)
 
         QMetaObject.connectSlotsByName(self)
-
-    def retranslateUi(self, Form):
-        Form.setWindowTitle(QCoreApplication.translate("Form", u"Tagging Face ", None))
-        self.buttonOK.setText(QCoreApplication.translate("Form", u"OK", None))
-        self.buttonCancel.setText(QCoreApplication.translate("Form", u"Cancel", None))
 
     def showDialog(self, message):
         dialog = QMessageBox(self)
@@ -69,7 +62,7 @@ class TaggerWidget(QWidget):
         tagName = self.__tagEdit.text()
         if tagName:
             self.__photo.setTags(tagName)
-            self.taggerHandler.emit(self.__photo)
+            self.taggerMessageHandler.emit(self.__photo)
             self.close()
         else:
             self.showDialog("Please enter a name for this person!")
@@ -84,4 +77,3 @@ class TaggerWidget(QWidget):
         scene = QGraphicsScene()
         scene.addPixmap(image)
         self.__photoViewer.setScene(scene)
-        self.resize(image.width(), image.height())

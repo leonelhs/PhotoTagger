@@ -1,5 +1,5 @@
-from UI.widgets.Photo import Photo
-from UI.widgets.baseclass.PhotoGridBase import PhotoGridBase
+from UI.widgets.photo import Photo
+from UI.widgets.baseclass.photo_grid_base import PhotoGridBase
 
 from UI.widgets import grid_positions
 
@@ -19,7 +19,6 @@ class PhotoGrid(PhotoGridBase):
 
     def drawPhoto(self, metadata, position=(0, 0)):
         photo = self.newPhoto(metadata)
-        photo.drawPixmap()
         self.layout.addLayout(photo, position[0], position[1])
 
     def drawPhotos(self, metadataList, max_columns=5):

@@ -1,13 +1,14 @@
 from abc import abstractmethod
 
-from FaceTagger import getMetadata
-from FileFilter import FileFilter
-from ScanWorker import ScanWorker
+from face_tagger import getMetadata
+from file_filter import FileFilter
+from scan_worker import ScanWorker
 
 
 class PhotoScanner:
 
     def __init__(self):
+        self.storage = None
         self.viewer = None
         self.threadpool = None
         self.progressBar = None
@@ -22,17 +23,22 @@ class PhotoScanner:
 
     def executeScanningWork(self, folder, progress_callback):
         self.progressBar.show()
-        imageList = FileFilter(folder)
-        for image in imageList():
-            metadata = getMetadata(image["path"])
-            if metadata:
-                imageList.append(image, metadata)
-                progress_callback.emit(imageList.progress())
-        return imageList.metadataList()
+        if not self.storage.exists(folder):
+            imageList = FileFilter(folder)
+            for image in imageList():
+                metadata = getMetadata(image["path"])
+                if metadata:
+                    imageList.append(image, metadata)
+                    progress_callback.emit(imageList.progress())
+            metadataList = imageList.metadataList()
+            self.storage.saveGallery(folder, metadataList)
+            return metadataList
+        else:
+            return self.storage.fetchAllFaces(folder)
 
     def trackScanningProgress(self, progress):
         self.progressBar.setValue(progress)
-        self.logger("Scanning gallery completed: ", progress)
+        self.logger("Scanning gallery progress: ", progress)
 
     def scanningDone(self, metadata):
         self.logger("encode ", " done")

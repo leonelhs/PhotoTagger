@@ -8,7 +8,10 @@ class ImageGraphicsView(QGraphicsView):
         super(ImageGraphicsView, self).__init__(parent)
         QMetaObject.connectSlotsByName(self)
 
+    def redraw(self):
+        self.fitInView(self.items()[0], Qt.AspectRatioMode.KeepAspectRatio)
+
     def resizeEvent(self, event):
         if self.items():
-            self.fitInView(self.items()[0], Qt.AspectRatioMode.KeepAspectRatio)
+            self.redraw()
         return super().resizeEvent(event)

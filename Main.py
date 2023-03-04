@@ -1,7 +1,7 @@
 import sys
 from PySide6 import QtWidgets
 
-from UI.MainWindow import MainWindow
+from UI.main_window import MainWindow
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication([])

@@ -1,26 +1,10 @@
 import shutil
-from copy import copy
 
-import PIL.Image
-from PySide6.QtGui import QPainter, QColor
 from PySide6.QtWidgets import QMenu
-
-from UI.widgets.baseclass.PhotoBase import PhotoBase
-
-from FaceTagger import FACE_TAGS
-
-
-def openImage(path):
-    return PIL.Image.open(path)
-
-
-def get_line(array):
-    for i in range(0, len(array), 2):
-        yield array[i:i + 2]
+from UI.widgets.baseclass.photo_base import PhotoBase
 
 
 class Photo(PhotoBase):
-
     def __init__(self, metadata, *args):
         PhotoBase.__init__(self, metadata, *args)
         self.contextTagEvent = None
@@ -40,19 +24,6 @@ class Photo(PhotoBase):
     def copyFile(self, new_path):
         shutil.copy(self.filePath(), new_path)
         self.deleteWidget()
-
-    def clone(self):
-        metadata = copy(self.metadata())
-        return Photo(metadata)
-
-    def drawFaceLandmarks(self):
-        painter = QPainter(self.pixmap())
-        painter.setPen(QColor(255, 255, 0))
-        for marks in self.landmarks():
-            for positions in marks:
-                for position in get_line(marks[positions]):
-                    if len(position) > 1:
-                        painter.drawLine(*position[0], *position[1])
 
     def setContextTagEvent(self, callback):
         self.contextTagEvent = callback
@@ -83,19 +54,8 @@ class Photo(PhotoBase):
         elif action == copyTaggedFilesAction:
             self.contextCopyPhotosEvent(event, self)
 
-    def saveTags(self, tags):
-        image_original = openImage(self.filePath())
-        exif = image_original.getexif()
-        exif[FACE_TAGS] = tags
-        image_original.save(self.filePath(), exif=exif)
-
-    def setTags(self, tags):
-        if not tags:
-            tags = "Unknown"
+    def writeTags(self, callback, tags):
         super().setTags(tags)
-
-    def getOriginalPhoto(self):
-        original_photo = self.clone()
-        pixmap = openImage(self.filePath()).toqpixmap()
-        original_photo.setPixmap(pixmap)
-        return original_photo
+        folder = self.folder()
+        file = self.fileName()
+        callback((tags, folder, file))

@@ -3,12 +3,14 @@ from PySide6.QtWidgets import (QHBoxLayout, QMenuBar,
                                QProgressBar, QStatusBar,
                                QVBoxLayout, QWidget, QMainWindow, QMenu, QFileDialog)
 
-from Actions import ActionRecents, Action
-from FaceTagger import compareFaces
-from PhotoScanner import PhotoScanner
-from Reopen import Reopen
-from UI.TaggerWidget import TaggerWidget
-from UI.widgets.PhotoGrid import PhotoGrid
+from actions import ActionRecents, Action
+from face_tagger import compareFaces
+from photo_scanner import PhotoScanner
+from storage import Storage
+from UI.landmarks_widget import LandmarksWidget
+from UI.tagger_widget import TaggerWidget
+from UI.widgets.photo_grid import PhotoGrid
+import qtawesome as qta
 
 
 def tr(label):
@@ -16,11 +18,12 @@ def tr(label):
 
 
 class MainWindow(QMainWindow, PhotoScanner):
-    taggerHandler = Signal(object)
+    galleryTaggingHandler = Signal(object)
+    galleryLandmarksHandler = Signal(object)
 
     def __init__(self):
         super().__init__()
-        self.reopen = None
+        self.storage = None
         self.menuRecents = None
         self.menuGallery = None
         self.menuFile = None
@@ -38,11 +41,14 @@ class MainWindow(QMainWindow, PhotoScanner):
         self.threadpool = QThreadPool()
 
         self.taggingFaceForm = TaggerWidget()
-        self.reopen = Reopen()
+        self.landmarksFaceForm = LandmarksWidget()
+        self.storage = Storage()
 
         self.setupUi(self)
 
     def setupUi(self, main_window):
+        icon = qta.icon("fa.picture-o")
+        main_window.setWindowIcon(icon)
         main_window.setWindowTitle(tr("Photo Tagger"))
         self.central_widget = QWidget(main_window)
         self.central_layout = QHBoxLayout(self.central_widget)
@@ -75,8 +81,10 @@ class MainWindow(QMainWindow, PhotoScanner):
         main_window.setStatusBar(self.statusbar)
 
         QMetaObject.connectSlotsByName(main_window)
-        self.taggerHandler.connect(self.taggingFaceForm.onFaceTaggerRequest)
-        self.taggingFaceForm.taggerHandler.connect(self.onCompareFaceMessage)
+        self.galleryTaggingHandler.connect(self.taggingFaceForm.onFaceTaggerRequest)
+        self.taggingFaceForm.taggerMessageHandler.connect(self.onCompareFaceMessage)
+
+        self.galleryLandmarksHandler.connect(self.landmarksFaceForm.onFaceLandmarksRequest)
 
     def createMenus(self, main_window):
         self.menubar = QMenuBar(main_window)
@@ -94,7 +102,7 @@ class MainWindow(QMainWindow, PhotoScanner):
         main_window.setMenuBar(self.menubar)
 
     def appendFileRecents(self):
-        recents = self.reopen.fetchRecents()
+        recents = self.storage.fetchGalleries()
         for recent in recents:
             action = ActionRecents(self, recent[0])
             action.setCallback(self.startScanningThread)
@@ -110,14 +118,12 @@ class MainWindow(QMainWindow, PhotoScanner):
         pass
 
     def onContextMenuTagClicked(self, event, photo):
-        self.taggerHandler.emit(photo)
+        self.galleryTaggingHandler.emit(photo)
         self.taggingFaceForm.show()
 
     def onContextMenuLandmarksClicked(self, event, photo):
-        big_photo = photo.getOriginalPhoto()
-        big_photo.drawFaceLandmarks()
-        self.taggerHandler.emit(big_photo)
-        self.taggingFaceForm.show()
+        self.galleryLandmarksHandler.emit(photo)
+        self.landmarksFaceForm.show()
 
     def onContextMenuMovePhotosClicked(self, event, known_photo):
         new_path = QFileDialog.getExistingDirectory(self, 'Choose new destination')
@@ -136,12 +142,13 @@ class MainWindow(QMainWindow, PhotoScanner):
     def openPhotoGalleryFolder(self):
         folder = QFileDialog.getExistingDirectory(self, 'Open gallery')
         if folder:
-            self.reopen.appendRecents(folder)
             self.startScanningThread(folder)
             self.logger("Working gallery at: ", folder)
+
+    def savePhotoTags(self, values):
+        self.storage.updateAll(values)
 
     def onCompareFaceMessage(self, known_photo):
         for photo in self.viewer.photos():
             if compareFaces(known_photo.encodings(), photo.encodings()):
-                photo.setTags(known_photo.tags())
-                photo.saveTags(known_photo.tags())
+                photo.writeTags(self.savePhotoTags, known_photo.tags())

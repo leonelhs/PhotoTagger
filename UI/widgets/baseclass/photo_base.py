@@ -24,6 +24,7 @@ class PhotoBase(QVBoxLayout):
 
     def __initPhotoView(self):
         self.__frame = QLabel()
+        self.__frame.setPixmap(self.__metadata.pixmap.toqpixmap())
         self.__frame.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.__frame.mousePressEvent = self.clickEvent
         self.__frame.mouseDoubleClickEvent = self.doubleClickEvent
@@ -49,18 +50,11 @@ class PhotoBase(QVBoxLayout):
         return self.__metadata.tags
 
     def setTags(self, tags):
-        try:
-            self.__metadata.tags = tags
-            self.__label.setText(tags)
-        except IndexError:
-            print("Not able to set tags %s" % self.metadata().path)
-
-    def setPixmap(self, pixmap):
-        self.__metadata.pixmap = pixmap
-        self.__frame.setPixmap(pixmap)
+        self.__metadata.tags = tags
+        self.__label.setText(tags)
 
     def pixmap(self):
-        return self.__metadata.pixmap
+        return self.__metadata.pixmap.toqpixmap()
 
     def filePath(self):
         return self.__metadata.path
@@ -68,11 +62,17 @@ class PhotoBase(QVBoxLayout):
     def fileName(self):
         return self.__metadata.file
 
+    def folder(self):
+        return self.__metadata.folder
+
     def encodings(self):
         return self.__metadata.encodings
 
     def landmarks(self):
         return self.__metadata.landmarks
+
+    def bounds(self):
+        return self.__metadata.bounds
 
     def clickEvent(self, event):
         self.__click(event, self)
@@ -85,9 +85,6 @@ class PhotoBase(QVBoxLayout):
 
     def setDoubleClickEvent(self, callback):
         self.__doubleClick = callback
-
-    def drawPixmap(self):
-        self.__frame.setPixmap(self.__metadata.pixmap)
 
     def __style(self):
         self.__frame.setStyleSheet("QLabel::hover"
