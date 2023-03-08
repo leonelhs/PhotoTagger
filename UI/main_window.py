@@ -1,16 +1,18 @@
+import os.path
+
+import qtawesome as qta
 from PySide6.QtCore import (QCoreApplication, QMetaObject, Signal, QThreadPool)
 from PySide6.QtWidgets import (QHBoxLayout, QMenuBar,
                                QProgressBar, QStatusBar,
                                QVBoxLayout, QWidget, QMainWindow, QMenu, QFileDialog)
 
+from UI.landmarks_widget import LandmarksWidget
+from UI.tagger_widget import TaggerWidget
+from UI.widgets.photo_grid import PhotoGrid
 from actions import ActionRecents, Action
 from face_tagger import compareFaces
 from photo_scanner import PhotoScanner
 from storage import Storage
-from UI.landmarks_widget import LandmarksWidget
-from UI.tagger_widget import TaggerWidget
-from UI.widgets.photo_grid import PhotoGrid
-import qtawesome as qta
 
 
 def tr(label):
@@ -23,6 +25,7 @@ class MainWindow(QMainWindow, PhotoScanner):
 
     def __init__(self):
         super().__init__()
+        self.menuFaces = None
         self.storage = None
         self.menuRecents = None
         self.menuGallery = None
@@ -37,6 +40,14 @@ class MainWindow(QMainWindow, PhotoScanner):
 
         self.actionGalleryOpen = Action(self, "Open Gallery", "fa.folder-open")
         self.actionGalleryOpen.setOnClickEvent(self.openPhotoGalleryFolder)
+
+        self.actionShowFacesCropped = Action(self, "Show faces cropped", "mdi.face-recognition")
+        self.actionSaveFacesCropped = Action(self, "Export faces cropped", "fa.save")
+        self.actionReloadAllFaces = Action(self, "Reload faces gallery", "mdi.reload")
+
+        self.actionShowFacesCropped.setOnClickEvent(self.onShowFacesCropped)
+        self.actionSaveFacesCropped.setOnClickEvent(self.onSaveFacesCropped)
+        self.actionReloadAllFaces.setOnClickEvent(self.onReloadAllFaces)
 
         self.threadpool = QThreadPool()
 
@@ -60,7 +71,7 @@ class MainWindow(QMainWindow, PhotoScanner):
         self.viewer.setContextTagEvent(self.onContextMenuTagClicked)
         self.viewer.setContextLandmarksEvent(self.onContextMenuLandmarksClicked)
         self.viewer.setContexMovePhotosEvent(self.onContextMenuMovePhotosClicked)
-        self.viewer.setContexCopyPhotosEvent(self.onContextMenuCopyPhotosClicked)
+        self.viewer.setContexCropFacesEvent(self.onContextMenuCropFacesClicked)
         self.widgets_layout.addWidget(self.viewer)
 
         self.progressBar = QProgressBar(self.central_widget)
@@ -95,6 +106,13 @@ class MainWindow(QMainWindow, PhotoScanner):
         self.menuRecents = QMenu(self.menuFile)
         self.menuRecents.setTitle(tr("Open Recents"))
 
+        self.menuFaces = QMenu(self.menubar)
+        self.menuFaces.setTitle(tr("Faces"))
+        self.menubar.addAction(self.menuFaces.menuAction())
+        self.menuFaces.addAction(self.actionShowFacesCropped)
+        self.menuFaces.addAction(self.actionSaveFacesCropped)
+        self.menuFaces.addAction(self.actionReloadAllFaces)
+
         self.actionGalleryOpen.setToolTip(tr("Open Gallery"))
         self.actionGalleryOpen.setShortcut(tr("Ctrl+O"))
 
@@ -111,6 +129,9 @@ class MainWindow(QMainWindow, PhotoScanner):
     def logger(self, tag, message):
         self.statusbar.showMessage("{0} {1}".format(tag, message))
 
+    def showMessage(self, message):
+        self.statusbar.showMessage(message)
+
     def onActivePhotoClicked(self, event, photo):
         self.logger("Working image at: ", photo.tags())
 
@@ -126,18 +147,39 @@ class MainWindow(QMainWindow, PhotoScanner):
         self.landmarksFaceForm.show()
 
     def onContextMenuMovePhotosClicked(self, event, known_photo):
-        new_path = QFileDialog.getExistingDirectory(self, 'Choose new destination')
-        if new_path:
-            for photo in self.viewer.photos():
-                if photo == known_photo:
-                    photo.moveFile(new_path)
 
-    def onContextMenuCopyPhotosClicked(self, event, known_photo):
-        new_path = QFileDialog.getExistingDirectory(self, 'Choose new destination')
+        def updatePath(file, folder, new_folder):
+            self.storage.updateFolderPath((new_folder, folder, file))
+
+        new_path = QFileDialog.getExistingDirectory(self, 'Choose new folder destination')
         if new_path:
             for photo in self.viewer.photos():
                 if photo == known_photo:
-                    photo.copyFile(new_path)
+                    photo.moveFile(updatePath, new_path)
+
+    def onContextMenuCropFacesClicked(self, event, known_photo):
+        pass
+
+    def onShowFacesCropped(self):
+        for photo in self.viewer.photos():
+            thumb = photo.cropFace()
+            if thumb:
+                thumb = thumb.scaled(128, 128)
+                photo.setPixmap(thumb)
+
+    def onSaveFacesCropped(self):
+        new_folder = QFileDialog.getExistingDirectory(self, 'Choose photo set destination')
+        if new_folder:
+            for photo in self.viewer.photos():
+                new_path = os.path.join(new_folder, photo.fileName())
+                face = photo.cropFace()
+                if face:
+                    print(face.width())
+                    if face.width() >= 180:
+                        face.scaled(256, 256).save(new_path)
+
+    def onReloadAllFaces(self):
+        pass
 
     def openPhotoGalleryFolder(self):
         folder = QFileDialog.getExistingDirectory(self, 'Open gallery')
@@ -145,10 +187,17 @@ class MainWindow(QMainWindow, PhotoScanner):
             self.startScanningThread(folder)
             self.logger("Working gallery at: ", folder)
 
-    def savePhotoTags(self, values):
-        self.storage.updateAll(values)
-
     def onCompareFaceMessage(self, known_photo):
+
+        def updatePhotoTags(tags, folder, file):
+            self.storage.updateAllTags((tags, folder, file))
+
+        matches = []
         for photo in self.viewer.photos():
             if compareFaces(known_photo.encodings(), photo.encodings()):
-                photo.writeTags(self.savePhotoTags, known_photo.tags())
+                matches.append(photo)
+
+        for photo in matches:
+            photo.writeTags(updatePhotoTags, known_photo.tags())
+
+        self.logger("Total faces matches ", str(len(matches)))

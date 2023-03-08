@@ -11,7 +11,7 @@ class PhotoGrid(PhotoGridBase):
         self.contextTagEvent = None
         self.contextLandmarksEvent = None
         self.contextMovePhotosEvent = None
-        self.contextCopyPhotosEvent = None
+        self.contextCropFacesEvent = None
         self.__photos = []
 
     def photos(self):
@@ -22,7 +22,7 @@ class PhotoGrid(PhotoGridBase):
         self.layout.addLayout(photo, position[0], position[1])
 
     def drawPhotos(self, metadataList, max_columns=5):
-        self.__clear()
+        self.clear()
         positions = grid_positions(len(metadataList), max_columns)
         for position, metadata in zip(positions, metadataList):
             self.drawPhoto(metadata, position)
@@ -36,8 +36,8 @@ class PhotoGrid(PhotoGridBase):
     def setContexMovePhotosEvent(self, callback):
         self.contextMovePhotosEvent = callback
 
-    def setContexCopyPhotosEvent(self, callback):
-        self.contextCopyPhotosEvent = callback
+    def setContexCropFacesEvent(self, callback):
+        self.contextCropFacesEvent = callback
 
     def newPhoto(self, metadata):
         photo = Photo(metadata)
@@ -46,11 +46,15 @@ class PhotoGrid(PhotoGridBase):
         photo.setContextTagEvent(self.contextTagEvent)
         photo.setContextLandmarksEvent(self.contextLandmarksEvent)
         photo.setContextMovePhotosEvent(self.contextMovePhotosEvent)
-        photo.setContextCopyPhotosEvent(self.contextCopyPhotosEvent)
+        photo.setContextCropFaceEvent(self.contextCropFacesEvent)
         self.__photos.append(photo)
         return photo
 
-    def __clear(self):
-        for photo in self.__photos:
-            photo.deleteWidget()
-        self.__photos = []
+    def clear(self):
+        try:
+            for photo in self.__photos:
+                photo.deleteWidget()
+        except RuntimeError:
+            print("Photo widget already deleted.")
+        finally:
+            self.__photos = []

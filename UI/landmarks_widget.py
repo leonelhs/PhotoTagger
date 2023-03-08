@@ -26,11 +26,14 @@ def drawFaceLandmarks(pixmap, landmarks):
                     painter.drawLine(*position[0], *position[1])
 
 
-def drawFaceBound(pixmap, bounds):
+def drawFaceBound(pixmap, rect):
     painter = QPainter(pixmap)
     painter.setPen(QColor(255, 255, 0))
-    rect = bounds
-    painter.drawRect(rect.top(), rect.left(), rect.width(), rect.height())
+    try:
+        painter.drawRect(rect['x'], rect['y'], rect['w'], rect['h'])
+    except TypeError:
+        print("No able to draw bounds")
+        return None
 
 
 class LandmarksWidget(QWidget):
@@ -52,11 +55,11 @@ class LandmarksWidget(QWidget):
     def onFaceLandmarksRequest(self, photo):
         pixmap = openImage(photo.filePath())
         landmarks = photo.landmarks()
-        bounds = photo.bounds()[0]
+        bounds = photo.bounds()
+        drawFaceBound(pixmap, bounds)
         drawFaceLandmarks(pixmap, landmarks)
         scene = QGraphicsScene()
         scene.addPixmap(pixmap)
         self.__photoViewer.setScene(scene)
         self.__photoViewer.redraw()
         self.resize(pixmap.width(), pixmap.height())
-

@@ -41,12 +41,11 @@ class PhotoScanner:
         self.logger("Scanning gallery progress: ", progress)
 
     def scanningDone(self, metadata):
-        self.logger("encode ", " done")
+        self.showMessage("{0} {1}".format("Total photos showed ", len(metadata)))
         self.viewer.drawPhotos(metadata)
 
     def scanningComplete(self):
         self.progressBar.hide()
-        self.logger("Scanning complete ", "Done")
 
     @abstractmethod
     def logger(self, param, progress):

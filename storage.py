@@ -27,8 +27,7 @@ def serializeValues(values):
 
 
 def unserializeValues(values):
-    return [
-        MetaData({
+    return [MetaData({
         "folder": row[0],
         "file": row[1],
         "tags": row[2],
@@ -80,7 +79,7 @@ class Storage:
 
     def fetchAllFaces(self, folder):
         with DbConnection(self.database) as con:
-            query = "SELECT * FROM faces WHERE folder = ?"
+            query = "SELECT * FROM faces WHERE folder = ? order by tags"
             result = con.execute(query, (folder,)).fetchall()
             return unserializeValues(result)
 
@@ -89,9 +88,15 @@ class Storage:
             query = "SELECT * FROM faces WHERE folder = ? AND file = ?"
             return con.execute(query, (folder, file)).fetchone()
 
-    def updateAll(self, values):
+    def updateAllTags(self, values):
         with DbConnection(self.database) as con:
             query = "UPDATE faces SET tags = ? WHERE folder = ? AND file = ?"
+            con.execute(query, values)
+            con.commit()
+
+    def updateFolderPath(self, values):
+        with DbConnection(self.database) as con:
+            query = "UPDATE faces SET folder = ? WHERE folder = ? AND file = ?"
             con.execute(query, values)
             con.commit()
 

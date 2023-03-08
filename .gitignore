@@ -4,3 +4,4 @@ playgorund.py
 __pycache__
 ./UI/__pycache__/
 ./UI/widgets/__pycache__/
+representations_vgg_face.pkl

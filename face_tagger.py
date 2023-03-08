@@ -2,7 +2,7 @@ import PIL.Image
 import face_recognition
 import numpy as np
 from PIL import UnidentifiedImageError
-from face_recognition.api import face_detector
+from deepface import DeepFace
 
 
 def face_landmarks(np_array, face_locations=None):
@@ -45,7 +45,13 @@ def getMetadata(image_path):
     image = openImage(image_path)
     if image:
         np_array = np.array(image)
-        bounds = face_detector(np_array, 1)
+        bounds = (0, 0, 0, 0)
+        try:
+            bounds = DeepFace.extract_faces(image_path)[0]['facial_area']
+        except ValueError:
+            print("No able to extract face %s" % image_path)
+        except AttributeError:
+            print("No able to extract face %s" % image_path)
         locations = face_recognition.face_locations(np_array)
         metadata["landmarks"] = face_landmarks(np_array, locations)
         metadata["encodings"] = face_encodings(image, np_array, locations)
@@ -55,3 +61,5 @@ def getMetadata(image_path):
         metadata["tags"] = "Unknown"
         return metadata
     return None
+
+

@@ -1,6 +1,6 @@
 from abc import abstractmethod
 
-from PySide6.QtGui import Qt
+from PySide6.QtGui import Qt, QPixmap
 from PySide6.QtWidgets import QVBoxLayout, QLabel
 
 
@@ -56,8 +56,20 @@ class PhotoBase(QVBoxLayout):
     def pixmap(self):
         return self.__metadata.pixmap.toqpixmap()
 
+    def setPixmap(self, pixmap):
+        self.__frame.setPixmap(pixmap)
+
     def filePath(self):
         return self.__metadata.path
+
+    def cropFace(self):
+        image = QPixmap(self.filePath())
+        rect = self.bounds()
+        try:
+            return image.copy(rect['x'], rect['y'], rect['w'], rect['h'])
+        except TypeError:
+            print("No bounds where found at %s " % self.fileName())
+            return None
 
     def fileName(self):
         return self.__metadata.file
