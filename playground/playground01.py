@@ -121,4 +121,15 @@ def main():
 
 main()
 
+
+def addExtension(folder, extension):
+    for file in os.listdir(folder):
+        path = join(folder, file)
+        if isfile(path):
+            if is_image(path):
+                current_name, ext = os.path.splitext(path)
+                if not ext:
+                    os.rename(path, current_name + extension)
+                    print(current_name)
+
 # drawBounds(face_locations)
